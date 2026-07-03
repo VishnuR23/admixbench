@@ -17,8 +17,13 @@ Running the notebook top-to-bottom (from a clean state) produces:
 |---|---|---|
 | 5 | Admixture signal `f3(P3; P2, P5)` | **Z = −4.17** (clearly negative) → gate passes |
 | 6 | qpgraph fit of the **true** topology | worst residual **\|Z\| = 0.49** → round-trip sound |
-| 7 | `find_graphs` blind search (1 admixture) | best graph **score 5.084** |
-| 8 | Recovered vs truth | **PASS** — best-scoring graph is the truth (5.084 = true-topology score) |
+| 7 | `find_graphs` blind search, **100 restarts** (1 admixture) | 1754 distinct topologies explored; best **score 5.084** |
+| 8 | Recovered vs truth | **PASS** — a truth-equivalent graph (P3 admixed + {P1,P2}/{P4,P5} backbone) tops the ranking at score 5.084 = true-topology score |
+
+**Reproducibility.** msprime genotypes are byte-identical across runs (fixed seed) → f2 values are
+identical; `find_graphs` uses reproducible parallel RNG streams (`L'Ecuyer-CMRG` + `set.seed(1)`), so a
+re-run reproduces the same result on the same core count. Step 7 runs 100 restarts in parallel
+(~10–15 min); everything else is seconds.
 
 The simulated graph: **6 sampled populations = 5 ingroup (P1–P5) + 1 outgroup (O)** with a single
 admixture event at **P3** (mixing a P2-side and a P5-side lineage). Five ingroup populations plus the
