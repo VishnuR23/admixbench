@@ -1,0 +1,16 @@
+name: admixbench
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - msprime
+  - numpy
+  - pandas
+  - networkx
+  - matplotlib
+  - pyyaml
+  - pytest
+  - jupyter
+  - pip
+  - pip:
+      - -e .
