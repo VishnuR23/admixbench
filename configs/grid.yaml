@@ -1,0 +1,31 @@
+# Benchmark grid. The graph definitions are locked: do not change them after
+# results exist. replicates and search.numstart are run parameters; the values
+# actually used for each run are recorded in results/RUN_LOG.md.
+
+sim:
+  samples_per_pop: 10        # diploids per leaf
+  sequence_length: 1.0e+8    # about 500k SNPs, 50 jackknife blocks of 2 Mb
+  recombination_rate: 1.0e-8
+  mutation_rate: 1.25e-8
+
+search:
+  numstart: 50               # independent find_graphs runs per replicate
+  stop_gen: 100              # admixtools default
+
+replicates: 10               # seeds 1..replicates
+
+configs:
+  trivial:                   # 5 leaves + outgroup, no admixture
+    graph: trivial
+  easy:                      # 5 leaves + outgroup, P3 = 0.35 P2-side + 0.65 P5-side at t=100
+    graph: easy
+  m1:                        # Molloy et al. 2021 case study, popA admixed, popE outgroup
+    graph: m1
+  moderate:                  # random topology per seed
+    graph: random
+    n_leaves: 8
+    n_admix: 2
+  hard:
+    graph: random
+    n_leaves: 8
+    n_admix: 4
