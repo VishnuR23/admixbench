@@ -131,9 +131,12 @@ def find_graphs(f2dir, numadmix, outpop, numstart, seed, workdir, stop_gen=100, 
     find_graphs has no restart argument of its own (``numstart`` passed to it
     would reach qpgraph and set its optimizer starts instead). Each run here
     is one full hill-climb from a random start. All rows from all runs are
-    pooled, deduplicated by topology hash keeping the best score, and returned
-    sorted by score: a list of {"score", "hash", "run", "edges"}. The JSON is
-    cached under ``workdir`` keyed on the arguments.
+    pooled, deduplicated by topology hash keeping the best score, and sorted
+    by score. Returns {"rows": [{"score", "hash", "run", "edges"}, ...],
+    "run_secs": [wall seconds of each run]}. ``outpop=None`` leaves the
+    outgroup free, so any population, the true outgroup included, can be
+    inferred as admixed. The JSON is cached under ``workdir`` keyed on the
+    arguments.
     """
     workdir = Path(workdir)
     args = dict(f2dir=str(f2dir), numadmix=numadmix, outpop=outpop, numstart=numstart,
@@ -145,10 +148,12 @@ def find_graphs(f2dir, numadmix, outpop, numstart, seed, workdir, stop_gen=100, 
 suppressMessages({{library(admixtools); library(jsonlite); library(parallel)}})
 f2 <- f2_from_precomp({_q(f2dir)}, verbose=FALSE)
 one <- function(i) {{
-  r <- find_graphs(f2, numadmix={numadmix}, outpop={_q(outpop)}, stop_gen={stop_gen},
-                   diag={DIAG}, verbose=FALSE)
+  t0 <- proc.time()[["elapsed"]]
+  r <- find_graphs(f2, numadmix={numadmix}, outpop={_q(outpop) if outpop else "NULL"},
+                   stop_gen={stop_gen}, diag={DIAG}, verbose=FALSE)
+  secs <- proc.time()[["elapsed"]] - t0
   lapply(seq_len(nrow(r)), function(j)
-    list(score=r$score[j], hash=r$hash[j], run=i, edges=as.data.frame(r$edges[[j]])))
+    list(score=r$score[j], hash=r$hash[j], run=i, secs=secs, edges=as.data.frame(r$edges[[j]])))
 }}
 RNGkind("L'Ecuyer-CMRG"); set.seed({seed})
 res <- mclapply(seq_len({numstart}), one, mc.cores=max(1, detectCores() - 1), mc.set.seed=TRUE)
@@ -156,7 +161,9 @@ bad <- vapply(res, inherits, logical(1), "try-error")
 if (any(bad)) stop(paste("find_graphs run failed:", res[bad][[1]]))
 write_json(do.call(c, res), {_q(out_path)}, auto_unbox=TRUE, digits=NA, na="null", dataframe="columns")
 """, workdir, f"find_graphs_{key}")
-    return parse_find_graphs(json.loads(out_path.read_text()))
+    raw = json.loads(out_path.read_text())
+    run_secs = {r["run"]: r["secs"] for r in raw if "secs" in r}
+    return {"rows": parse_find_graphs(raw), "run_secs": [run_secs[k] for k in sorted(run_secs)]}
 
 
 def parse_find_graphs(raw):

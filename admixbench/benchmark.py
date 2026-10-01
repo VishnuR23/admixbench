@@ -92,9 +92,10 @@ def _stage2(name, seed, spec, data, gate, numstart, stop_gen):
     """find_graphs and scoring for one replicate."""
     truth = spec.to_networkx()
     t0 = time.time()
-    rows = admixtools.find_graphs(data["f2dir"], numadmix=len(spec.admixtures), outpop=spec.outgroup,
-                                  numstart=numstart, seed=seed, workdir=data["datadir"], stop_gen=stop_gen)
+    fg = admixtools.find_graphs(data["f2dir"], numadmix=len(spec.admixtures), outpop=spec.outgroup,
+                                numstart=numstart, seed=seed, workdir=data["datadir"], stop_gen=stop_gen)
     t_find = time.time() - t0
+    rows = fg["rows"]
     ranked = [admixtools.edges_to_networkx(r["edges"]) for r in rows]
     best = ranked[0]
     acc = metrics.admixed_accuracy(truth, best)
@@ -115,6 +116,7 @@ def _stage2(name, seed, spec, data, gate, numstart, stop_gen):
         identifiability_flag=metrics.identifiability_flag(gate["fitted"], best),
         numstart=numstart, t_simulate=data["t_simulate"], t_export=data["t_export"],
         t_extract_f2=data["t_extract_f2"], t_qpgraph=data["t_qpgraph"], t_find_graphs=t_find,
+        find_graphs_run_secs_mean=sum(fg["run_secs"]) / len(fg["run_secs"]),
     )
 
 
@@ -139,7 +141,8 @@ def run_grid(grid, cache_root="cache", out_dir="results", configs=None, replicat
         n = replicates or cfg.get("replicates", grid["replicates"])
         jobs += [(name, cfg, seed, sim, cache_root) for seed in range(1, n + 1)]
 
-    workers = workers or max(1, (os.cpu_count() or 2) - 1)
+    # one 1e8 bp simulation peaks near 1 GB; 4 workers fit in 8 GB with R alongside
+    workers = workers or min(4, max(1, (os.cpu_count() or 2) - 1))
     log(f"stage 1: {len(jobs)} replicates, data + qpgraph gate, {workers} workers")
     t0 = time.time()
     with Pool(workers) as pool:
