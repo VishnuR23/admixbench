@@ -161,14 +161,22 @@ def rank_of_truth(true, ranked):
     return None
 
 
-def identifiability_flag(true, inferred, min_set_distance=2, rel_tol=0.02):
+def identifiability_flag(true, inferred, tol, min_set_distance=2, score_gap=None, max_score_gap=4.0):
     """True when the graphs differ in structure (set distance at least
     ``min_set_distance``) but predict nearly the same f2 (covariance distance
-    at most ``rel_tol`` times the norm of the true f2 matrix). That pattern
-    means the data cannot tell the two graphs apart. It is not a failure of
-    the search method."""
+    at most ``tol``). That pattern means the data cannot tell the two graphs
+    apart. It is not a failure of the search method.
+
+    ``tol`` should be the size of the f2 sampling noise, for example the
+    Frobenius norm of the jackknife standard errors of the f2 matrix. On
+    fitted graphs, covariance distance alone cannot separate "another graph
+    fits as well" from "the search missed a better graph", because both
+    fitted graphs land within noise of the data. So when ``score_gap`` (the
+    inferred score minus the true score, lower is better) is given, the flag
+    also requires the inferred graph to fit no worse than ``max_score_gap``.
+    """
     if set_distance(true, inferred) < min_set_distance:
         return False
-    order = sorted(_leaves(true))
-    scale = np.linalg.norm(expected_f2(true).loc[order, order].values)
-    return covariance_distance(true, inferred) <= rel_tol * scale
+    if score_gap is not None and score_gap > max_score_gap:
+        return False
+    return covariance_distance(true, inferred) <= tol

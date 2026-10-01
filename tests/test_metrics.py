@@ -47,7 +47,7 @@ def test_identical_graphs_score_zero(g):
     assert acc["exact_match"] and acc["precision"] == acc["recall"] == 1.0
     assert all(acc["sources_correct"].values()) and acc["clades_exact"]
     assert rank_of_truth(g, [other]) == 1
-    assert not identifiability_flag(g, other)
+    assert not identifiability_flag(g, other, tol=1e-9)
 
 
 def test_one_leaf_swap_gives_positive_set_distance():
@@ -111,7 +111,9 @@ def test_root_placement_twins_are_flagged():
     assert not topology_equality(a, b)
     assert set_distance(a, b) >= 2
     assert covariance_distance(a, b) == pytest.approx(0, abs=1e-12)
-    assert identifiability_flag(a, b)
+    assert identifiability_flag(a, b, tol=1e-9)
+    # the same pair, but the truth fits much better: a search failure, not identifiability
+    assert not identifiability_flag(a, b, tol=1e-9, score_gap=9.0)
 
 
 def test_different_admixed_population_is_not_flagged():
@@ -124,7 +126,7 @@ def test_different_admixed_population_is_not_flagged():
     a, c = admixed("A", ("C", "B")), admixed("C", ("A", "B"))
     assert set_distance(a, c) >= 2
     assert covariance_distance(a, c) > 1e-3
-    assert not identifiability_flag(a, c)
+    assert not identifiability_flag(a, c, tol=1e-3)
 
 
 def test_covariance_distance_rejects_mismatched_leaves():

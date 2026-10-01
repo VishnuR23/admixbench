@@ -90,7 +90,9 @@ def qpgraph_score(f2dir, graph, outpop, workdir, label="qpgraph"):
     """Fit a fixed topology. Returns {"score", "worst_residual", "edges"}.
 
     The worst residual is the largest |Z| over the f4 residuals. ``edges`` are
-    the fitted edges, in the find_graphs format. The f3 base population is set
+    the fitted edges, in the find_graphs format. ``f2_se_norm`` is the
+    Frobenius norm of the block-jackknife standard errors of the f2 matrix,
+    the scale of the sampling noise. The f3 base population is set
     to ``outpop``, as find_graphs does. Left unset, qpgraph uses the first
     leaf in the edge list, and with few jackknife blocks the same topology
     then scores differently depending on edge order.
@@ -104,12 +106,16 @@ suppressMessages({{library(admixtools); library(jsonlite)}})
 f2 <- f2_from_precomp({_q(f2dir)}, verbose=FALSE)
 e <- fromJSON({_q(edges_path)})
 q <- qpgraph(f2, e, diag={DIAG}, f3basepop={_q(outpop)}, return_fstats=TRUE)
-cat(toJSON(list(score=q$score, worst_residual=max(abs(q$f4$z), na.rm=TRUE),
+n <- dim(f2)[3]
+loo <- sapply(seq_len(n), function(j) apply(f2[, , -j, drop=FALSE], 1:2, mean), simplify="array")
+se <- sqrt((n - 1) / n * apply((loo - c(apply(loo, 1:2, mean)))^2, 1:2, sum))
+cat(toJSON(list(score=q$score, worst_residual=max(abs(q$f4$z), na.rm=TRUE), f2_se_norm=norm(se, "F"),
                 edges=as.data.frame(q$edges)), auto_unbox=TRUE, digits=NA, na="null", dataframe="columns"))
 """, workdir, label)
     res = json.loads(out.strip().splitlines()[-1])
     edges = parse_find_graphs([{"score": res["score"], "hash": label, "edges": res["edges"]}])[0]["edges"]
-    return {"score": float(res["score"]), "worst_residual": float(res["worst_residual"]), "edges": edges}
+    return {"score": float(res["score"]), "worst_residual": float(res["worst_residual"]),
+            "f2_se_norm": float(res["f2_se_norm"]), "edges": edges}
 
 
 def qpgraph_true(f2dir, spec, workdir):

@@ -25,6 +25,7 @@ from .simulate import simulate
 
 SIM_DEFAULTS = dict(samples_per_pop=10, sequence_length=1e8,
                     recombination_rate=1e-8, mutation_rate=1.25e-8)
+MAX_SCORE_GAP = 4.0    # score units; see metrics.identifiability_flag
 FIXED = {"trivial": trivial_graph, "easy": easy_graph, "m1": m1_graph}
 
 
@@ -100,20 +101,29 @@ def _stage2(name, seed, spec, data, gate, numstart, stop_gen):
     best = ranked[0]
     acc = metrics.admixed_accuracy(truth, best)
     sources = list(acc["sources_correct"].values())
+    gap = rows[0]["score"] - gate["score"]
+    sd = metrics.set_distance(truth, best)
+    # recovered: same structure. alternative_fits: a different graph fits about
+    # as well or better. search_failure: the truth fits clearly better than
+    # anything the search returned.
+    outcome = ("recovered" if sd == 0 else
+               "alternative_fits" if gap <= MAX_SCORE_GAP else "search_failure")
     return dict(
         config=name, seed=seed, graph=spec.name, n_snps=data["n_snps"], n_blocks=data["n_blocks"],
         qpgraph_true_score=gate["score"], qpgraph_worst_residual=gate["worst_residual"],
         gate_passed=gate["passed"], find_graphs_best_score=rows[0]["score"],
-        score_gap=rows[0]["score"] - gate["score"], n_topologies=len(rows),
+        score_gap=gap, n_topologies=len(rows),
         topology_equal=metrics.topology_equality(truth, best),
-        set_distance=metrics.set_distance(truth, best),
+        set_distance=sd,
         covariance_distance=metrics.covariance_distance(gate["fitted"], best),
         admixed_exact=acc["exact_match"], admixed_precision=acc["precision"], admixed_recall=acc["recall"],
         sources_correct=all(sources) if sources else None, clades_exact=acc["clades_exact"],
         true_admixed=" ".join(sorted(acc["true_admixed"])),
         inferred_admixed=" ".join(sorted(acc["inferred_admixed"])),
         rank_of_truth=metrics.rank_of_truth(truth, ranked),
-        identifiability_flag=metrics.identifiability_flag(gate["fitted"], best),
+        identifiability_flag=metrics.identifiability_flag(gate["fitted"], best, tol=gate["f2_se_norm"],
+                                                          score_gap=gap),
+        outcome=outcome, f2_se_norm=gate["f2_se_norm"],
         numstart=numstart, t_simulate=data["t_simulate"], t_export=data["t_export"],
         t_extract_f2=data["t_extract_f2"], t_qpgraph=data["t_qpgraph"], t_find_graphs=t_find,
         find_graphs_run_secs_mean=sum(fg["run_secs"]) / len(fg["run_secs"]),
