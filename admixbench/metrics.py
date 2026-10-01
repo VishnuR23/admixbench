@@ -108,8 +108,11 @@ def set_distance(true, inferred):
 def covariance_distance(true, inferred):
     """Frobenius norm between the expected f2 matrices of the two graphs.
 
-    The inferred graph must carry fitted lengths on every edge (find_graphs
-    returns them). Both graphs must have the same leaves.
+    Both graphs need lengths on every edge, in the same units, and the same
+    leaves. find_graphs fits lengths in per-SNP f2 units, which are far
+    smaller than drift in time / 2Ne. So the benchmark compares the inferred
+    graph with the true topology fitted by qpgraph on the same data, not with
+    the spec's own drift lengths.
     """
     if _leaves(true) != _leaves(inferred):
         raise ValueError(f"leaf sets differ: {sorted(_leaves(true))} vs {sorted(_leaves(inferred))}")
