@@ -177,3 +177,26 @@ def test_random_graph_is_deterministic_in_seed():
 def test_random_graph_rejects_too_many_admixtures():
     with pytest.raises(ValueError):
         random_graph(5, 3, 0)
+
+
+# ------------------------------------------------------------------------ M1
+def test_m1_reproduces_published_drift_lengths():
+    from admixbench.graphspec import m1_graph
+    g = m1_graph().to_networkx()
+    published = {("R", "popE"): .38, ("R", "v1"): .005, ("v1", "v2"): .125, ("v2", "v3"): .125,
+                 ("v2", "popC"): .25, ("v3", "popB"): .125, ("v1", "popD@1000"): .325,
+                 ("popD@1000", "popD"): .05, ("v3", "popA_adm"): .075, ("popA_adm", "popA"): .05,
+                 ("popD@1000", "popA_adm"): 0.0}
+    assert set(g.edges) == set(published)
+    for e, l in published.items():
+        assert g.edges[e]["length"] == pytest.approx(l), e
+    assert g.edges["popD@1000", "popA_adm"]["proportion"] == 0.35
+    assert g.edges["v3", "popA_adm"]["proportion"] == 0.65
+
+
+def test_m1_alternatives_have_the_right_admixed_leaf():
+    from admixbench.graphspec import m1_alternatives
+    alt = m1_alternatives()
+    assert not any(alt["N0"].in_degree(n) == 2 for n in alt["N0"])
+    assert [n for n in alt["N1"] if alt["N1"].in_degree(n) == 2] == ["v5"]
+    assert list(alt["N1"].successors("v5")) == ["popE"]

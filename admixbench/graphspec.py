@@ -309,3 +309,41 @@ def random_graph(n_leaves, n_admix, seed, Ne=10_000.0, gap=(200, 1000)):
         populations=_tree_pops(leaves + ["O"], internal + ["R"], Ne),
         splits=splits, admixtures=admixtures, outgroup="O",
         name=f"random_n{n_leaves}_a{n_admix}_s{seed}")
+
+
+# ------------------------------------------------------------------------ M1
+def m1_graph(Ne=10_000.0):
+    """M1, the case-study model of Molloy et al. 2021 (OrientAGraph).
+
+    Source: github.com/ekmolloy/mlno-study, model ``case_study``. Topology and
+    drift from model-data-sets/tools/case_study_graphs.R. Ne and times from
+    simulated-data-sets/a_run_ms_case_study.sh: Ne 10,000; R 7600, v1 7500,
+    v2 5000, v3 2500, admixture 1000. Drift = time / (2 Ne) reproduces every
+    published length: R-popE .38, R-v1 .005, v1-v2 .125, v2-v3 .125,
+    v2-popC .25, v3-popB .125, v1-v4 .325, v4-popD .05, v3-v5 .075,
+    v5-popA .05, v4-v5 0.
+
+    popA is founded at t=1000 from popD's lineage (0.35, the v4 side) and from
+    a ghost lineage that joins popB at 2500 (0.65, the v3 side). popE is the
+    outgroup.
+    """
+    return GraphSpec(
+        populations=_tree_pops(["popA", "popB", "popC", "popD", "popE"], ["ghostB", "v3", "v2", "v1", "R"], Ne),
+        splits=[Split(2500, ("popB", "ghostB"), "v3"), Split(5000, ("v3", "popC"), "v2"),
+                Split(7500, ("v2", "popD"), "v1"), Split(7600, ("v1", "popE"), "R")],
+        admixtures=[Admixture(1000, "popA", ("popD", "ghostB"), (0.35, 0.65))],
+        outgroup="popE", name="m1")
+
+
+def m1_alternatives():
+    """Topologies (no lengths) from the same repo, for the acceptance test.
+
+    N0: the ML pure tree (get_case_study_mr_tree_topology).
+    N1: the graph TreeMix returns, with the outgroup popE as the admixed leaf
+        (get_start_graph in case-study/figure_graphs.R).
+    """
+    n0 = [("R", "v1"), ("R", "popE"), ("v1", "v2"), ("v1", "popD"),
+          ("v2", "v3"), ("v2", "popA"), ("v3", "popB"), ("v3", "popC")]
+    n1 = [("R", "v1"), ("R", "v5"), ("v1", "v2"), ("v1", "popD"), ("v2", "v3"), ("v2", "popA"),
+          ("v3", "popB"), ("v3", "v4"), ("v4", "popC"), ("v4", "v5"), ("v5", "popE")]
+    return {"N0": nx.DiGraph(n0), "N1": nx.DiGraph(n1)}
